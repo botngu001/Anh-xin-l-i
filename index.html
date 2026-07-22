@@ -8,7 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+    <!-- Không cần dùng firebase-storage nữa vì đã có ImgBB -->
     <!-- Fonts & Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
@@ -164,7 +164,6 @@
             </div>
         </div>
 
-        <!-- NEW: GIFTCODE SECTION -->
         <div id="giftSec" class="section">
             <div class="glass-card">
                 <h3 style="margin-bottom:15px;"><i class="fa-solid fa-gift" style="color:var(--purple);"></i> Nhập Giftcode</h3>
@@ -176,16 +175,18 @@
     </main>
 
     <script>
-        // INIT FIREBASE
+        // API KEY IMGBB CỦA NÍ ĐÂY
+        const IMGBB_API_KEY = "2905198165c3157267bf7de814411282";
+
+        // INIT FIREBASE (GIỮ LẠI DB VÀ AUTH, BỎ STORAGE)
         const fbConfig = {
             apiKey: "AIzaSyAKHmU8Q0FhifiJaWYNRns0WCw0aQjJ1Ps",
             authDomain: "anh-xin-loi.firebaseapp.com",
             databaseURL: "https://anh-xin-loi-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "anh-xin-loi",
-            storageBucket: "anh-xin-loi.firebasestorage.app",
+            projectId: "anh-xin-loi"
         };
         if (!firebase.apps.length) firebase.initializeApp(fbConfig);
-        const auth = firebase.auth(); const db = firebase.database(); const storage = firebase.storage();
+        const auth = firebase.auth(); const db = firebase.database();
 
         const WH_A = "https://discord.com/api/webhooks/1502291339033972853/0dWtQ1F0Io3P6mzJ8iRI22UQQRdwI954XWGqLgV7sIV_slEfXHPZR1GENdFtBzPQ1Xiy";
         const WH_B = "https://discord.com/api/webhooks/1501518464865800232/o-Bg2K96B0XUOWq5spFQcMgICuxEdeCYpo3VK7jG5toeysh8qMji9NdgCm7gtcwRUfuo";
@@ -266,20 +267,32 @@
             const isVip = userData.vipExpiry > Date.now();
             if(!isVip && (userData.credits || 0) < 1) return alert("Bạn không đủ điểm! Hãy điểm danh hoặc Nạp VIP.");
 
-            const btn = document.getElementById('btnSubmit'); btn.disabled = true; btn.innerText = "Đang tải ảnh...";
+            const btn = document.getElementById('btnSubmit'); btn.disabled = true; btn.innerText = "Đang tải ảnh lên ImgBB...";
             try {
-                // Tải ảnh lên Storage
-                const ref = storage.ref(`reqs/${Date.now()}_${user.uid}`);
-                await ref.put(selFile); const url = await ref.getDownloadURL();
+                // SỬ DỤNG IMGBB API TẠI ĐÂY
+                const formData = new FormData();
+                formData.append("image", selFile);
                 
+                const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const imgbbData = await res.json();
+                
+                if(!imgbbData.success) throw new Error("Lỗi khi up ảnh lên ImgBB!");
+                
+                const url = imgbbData.data.url; // Lấy link ảnh từ ImgBB
+                
+                // Trừ điểm user nếu không phải VIP
                 if(!isVip) await db.ref(`users/${user.uid}`).update({ credits: userData.credits - 1 });
                 
+                // Đẩy thông tin vào database
                 const pushRef = db.ref('requests').push();
                 await pushRef.set({ uid: user.uid, email: user.email, type, desc: document.getElementById('descInp').value, oriUrl: url, status: 'pending', time: Date.now() });
                 
-                // FIXED: Fetch Discord không xài await để tránh bắt khách chờ Webhook phản hồi lâu
+                // Bắn thông báo qua Discord
                 fetch(WH_A, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
-                    content: `📩 **CÓ ẢNH MỚI**\nEmail: \`${user.email}\`\nLoại: \`${type}\`\nLink: ${url}`
+                    content: `📩 **CÓ ẢNH MỚI (ImgBB)**\nEmail: \`${user.email}\`\nLoại: \`${type}\`\nLink: ${url}`
                 })});
                 
                 alert("Đã gửi thành công!");
@@ -297,7 +310,7 @@
                     const s = d.status === 'completed' ? '<span class="badge b-done">Hoàn thành</span>' : d.status === 'failed' ? '<span class="badge b-fail">Thất bại / Từ chối</span>' : '<span class="badge b-wait">Đang chờ</span>';
                     const imgThumb = d.resUrl || d.oriUrl || 'https://i.postimg.cc/mZhP9f3P/placeholder.jpg';
                     html = `<div class="hist-item">
-                                <img src="${imgThumb}" style="width:60px; height:60px; object-fit:cover; border-radius:8px; ${d.type.includes('Mua') ? 'display:none;' : ''}">
+                                <img src="${imgThumb}" onclick="window.open('${imgThumb}', '_blank')" style="width:60px; height:60px; object-fit:cover; border-radius:8px; cursor:pointer; ${d.type.includes('Mua') ? 'display:none;' : ''}">
                                 <div style="flex:1"><b>Yêu cầu: ${d.type}</b> <br> ${s}</div> 
                                 ${d.status === 'completed' && d.resUrl ? `<a href="${d.resUrl}" target="_blank" class="btn btn-primary" style="padding:8px 15px; width:auto; text-decoration:none;">Tải Mượt</a>` : ''}
                             </div>` + html;
@@ -335,7 +348,6 @@
             alert("Đã gửi xác nhận. Vui lòng đợi admin duyệt!");
         }
 
-        // REDEEM GIFTCODE LOGIC
         async function redeemGiftcode() {
             const code = document.getElementById('giftCodeInp').value.trim();
             if(!code) return alert("Vui lòng nhập mã!");
@@ -351,7 +363,6 @@
                 const usedSnap = await usedRef.once('value');
                 if(usedSnap.exists()) return alert("Bạn đã sử dụng mã này rồi, không thể dùng lại!");
 
-                // Cộng điểm và lưu lịch sử
                 await db.ref(`users/${user.uid}`).transaction(u => {
                     if(u) { 
                         u.credits = (u.credits||0) + g.points; 
@@ -360,7 +371,7 @@
                     }
                     return u;
                 });
-                await ref.update({ uses: g.uses - 1 }); // Trừ 1 lượt dùng
+                await ref.update({ uses: g.uses - 1 }); 
                 alert(`Thành công! Bạn nhận được +${g.points} điểm.`);
                 document.getElementById('giftCodeInp').value = '';
             } catch(e) { alert("Lỗi: " + e.message); }
