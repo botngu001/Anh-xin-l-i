@@ -1,1 +1,987 @@
-sever đang lỗi admin đang fix 
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anh Xin Lỗi - Trạm Gửi Yêu Cầu & Trung Tâm Giải Trí</title>
+    <!-- Firebase Libraries -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <!-- Fonts & Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Space+Grotesk:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg: #06080e; 
+            --glass: rgba(18, 22, 32, 0.75); 
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --primary: #ff6b00; 
+            --purple: #b14bf4; 
+            --gold: #ffe875;
+            --cyan: #00f0ff;
+            --text: #f0f6fc; 
+            --dim: #8b949e;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Space Grotesk', sans-serif; }
+        body { background: var(--bg) url('https://www.transparenttextures.com/patterns/stardust.png'); color: var(--text); overflow-x: hidden; padding-bottom: 50px; }
+
+        /* MODALS */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(12px); }
+        .modal-box { background: rgba(18, 22, 31, 0.95); border: 1px solid var(--glass-border); padding: 30px; border-radius: 20px; text-align: center; max-width: 420px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+
+        #modalZoomImg { display: none; }
+        #modalZoomImg img { max-width: 90vw; max-height: 85vh; border-radius: 12px; border: 2px solid var(--primary); box-shadow: 0 0 30px rgba(255,107,0,0.5); }
+
+        /* GLASS CARD & BUTTONS */
+        .glass-card { background: var(--glass); backdrop-filter: blur(16px); border: 1px solid var(--glass-border); border-radius: 20px; padding: 25px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        
+        header { position: fixed; top: 0; left: 0; right: 0; height: 70px; background: rgba(6, 8, 14, 0.88); backdrop-filter: blur(12px); border-bottom: 1px solid var(--glass-border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 999; }
+        .logo { font-family: 'Pacifico', cursive; font-size: 1.8rem; background: linear-gradient(90deg, var(--primary), var(--purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 10px rgba(255,107,0,0.3); }
+        .menu-btn { font-size: 1.5rem; color: var(--text); background: none; border: none; cursor: pointer; }
+        
+        /* TOP MENU NAVIGATION */
+        #topMenu { position: fixed; top: 70px; left: 0; right: 0; background: rgba(10, 13, 20, 0.98); backdrop-filter: blur(25px); border-bottom: 1px solid var(--glass-border); transform: translateY(-150%); transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 998; padding: 20px; max-height: 85vh; overflow-y: auto; }
+        #topMenu.active { transform: translateY(0); }
+        .nav-item { padding: 12px 18px; border-radius: 12px; color: var(--text); text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 15px; transition: 0.2s; cursor: pointer; margin-bottom: 5px; }
+        .nav-item:hover, .nav-item.active { background: rgba(255,107,0,0.15); color: var(--primary); }
+
+        main { margin-top: 90px; padding: 0 20px 40px; max-width: 800px; margin-left: auto; margin-right: auto; }
+        .section { display: none; animation: fadeIn 0.4s ease-in-out; }
+        .section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        input, textarea, select { width: 100%; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); padding: 14px; border-radius: 12px; color: var(--text); outline: none; margin-bottom: 15px; font-size: 0.95rem; }
+        input:focus, textarea:focus { border-color: var(--purple); box-shadow: 0 0 10px rgba(177,75,244,0.3); }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.25s; text-align: center; }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--purple)); color: #fff; box-shadow: 0 5px 20px rgba(255,107,0,0.3); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(177,75,244,0.5); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+        .upload-area { border: 2px dashed var(--glass-border); border-radius: 16px; padding: 30px 20px; text-align: center; cursor: pointer; position: relative; background: rgba(0,0,0,0.2); transition: 0.3s; }
+        .upload-area:hover { border-color: var(--primary); background: rgba(255,107,0,0.05); }
+        .upload-area input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        
+        .radio-group { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0; }
+        .radio-btn { border: 1px solid var(--glass-border); padding: 14px; border-radius: 12px; text-align: center; cursor: pointer; transition: 0.2s; }
+        .radio-btn input { display: none; }
+        .radio-btn:has(input:checked) { border-color: var(--primary); background: rgba(255,107,0,0.15); font-weight: bold; }
+
+        .hist-item { background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); padding: 15px; border-radius: 12px; margin-bottom: 12px; display: flex; gap: 15px; align-items: center; }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
+        .b-wait { background: rgba(255,165,0,0.2); color: orange; border: 1px solid orange; }
+        .b-done { background: rgba(46,160,67,0.2); color: #2ea043; border: 1px solid #2ea043; }
+        .b-fail { background: rgba(248,81,73,0.2); color: #f85149; border: 1px solid #f85149; }
+
+        /* ==================== SUPER AVATAR FRAMES & TITLES (XỊN XÒ) ==================== */
+        .avatar-container { position: relative; width: 96px; height: 96px; margin: 0 auto 12px auto; display: flex; align-items: center; justify-content: center; }
+        .avatar-img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; z-index: 2; background: #111; border: 2px solid #080a0f; }
+        .avatar-frame { position: absolute; inset: 0; border-radius: 50%; z-index: 1; pointer-events: none; }
+
+        /* 1. KHUNG LEVEL (Lửa / Neon Pulse 3D) */
+        .frame-lv { 
+            background: linear-gradient(45deg, #ff0055, #ff6b00, #00f0ff, #ff0055); 
+            background-size: 300% 300%; 
+            animation: firePulse 2.5s ease infinite; 
+            padding: 4px;
+            box-shadow: 0 0 18px rgba(255,107,0,0.6);
+        }
+        @keyframes firePulse { 
+            0% { background-position: 0% 50%; box-shadow: 0 0 15px rgba(255,107,0,0.5); } 
+            50% { background-position: 100% 50%; box-shadow: 0 0 25px rgba(255,0,85,0.8); } 
+            100% { background-position: 0% 50%; box-shadow: 0 0 15px rgba(255,107,0,0.5); } 
+        }
+
+        /* 2. KHUNG VIP (Vàng Hoàng Gia 3D + Vương Miện + Shine Effect) */
+        .frame-vip { 
+            background: linear-gradient(135deg, #bf953f 0%, #fcf6ba 25%, #b38728 50%, #fbf5b7 75%, #aa771c 100%); 
+            background-size: 200% 200%; 
+            animation: vipRotate 3s linear infinite; 
+            box-shadow: 0 0 25px rgba(252,246,186,0.7), inset 0 0 10px rgba(255,215,0,0.8); 
+        }
+        .frame-vip::before { 
+            content: "👑"; 
+            position: absolute; 
+            top: -16px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            font-size: 1.4rem; 
+            z-index: 4; 
+            filter: drop-shadow(0 2px 6px rgba(0,0,0,0.9)); 
+            animation: crownBounce 2s ease-in-out infinite;
+        }
+        @keyframes vipRotate { 0% { background-position: 0% 0%; } 100% { background-position: 200% 200%; } }
+        @keyframes crownBounce { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-4px); } }
+
+        /* 3. KHUNG ADMIN (Cyber Neon RGB Stream + Verified Badge) */
+        .frame-admin { 
+            background: linear-gradient(90deg, #00f0ff, #7000ff, #ff007b, #00f0ff); 
+            background-size: 300% 300%; 
+            animation: adminCyber 2s linear infinite; 
+            box-shadow: 0 0 30px rgba(0,240,255,0.8); 
+        }
+        .admin-verified-badge { 
+            position: absolute; 
+            bottom: 2px; 
+            right: 2px; 
+            background: linear-gradient(135deg, #00f0ff, #7000ff); 
+            color: #fff; 
+            border-radius: 50%; 
+            width: 24px; 
+            height: 24px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 0.75rem; 
+            z-index: 4; 
+            border: 2px solid #06080e; 
+            box-shadow: 0 0 12px #00f0ff; 
+        }
+        @keyframes adminCyber { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
+
+        /* DANH HIỆU USER (METALLIC BADGES) */
+        .user-title { 
+            display: inline-block; 
+            background: linear-gradient(135deg, rgba(255, 107, 0, 0.2), rgba(177, 75, 244, 0.2)); 
+            color: var(--primary); 
+            font-weight: 800; 
+            font-size: 0.78rem; 
+            padding: 5px 16px; 
+            border: 1px solid rgba(255, 107, 0, 0.5); 
+            border-radius: 20px; 
+            margin-bottom: 8px; 
+            text-transform: uppercase; 
+            letter-spacing: 1.2px; 
+            box-shadow: 0 0 12px rgba(255,107,0,0.25);
+            backdrop-filter: blur(5px);
+        }
+
+        /* THANH LEVEL / EXP */
+        .exp-container { width: 100%; background: rgba(0,0,0,0.6); border-radius: 10px; height: 16px; overflow: hidden; border: 1px solid var(--glass-border); margin: 8px 0; position: relative; }
+        .exp-bar { height: 100%; background: linear-gradient(90deg, var(--primary), var(--purple)); width: 0%; transition: width 0.4s ease; }
+        .exp-text { position: absolute; inset: 0; font-size: 0.7rem; font-weight: bold; display: flex; align-items: center; justify-content: center; text-shadow: 0 0 4px #000; }
+
+        /* VÒNG QUAY MAY MẮN REDESIGN */
+        .wheel-wrapper {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 20px auto;
+            border-radius: 50%;
+            padding: 8px;
+            background: linear-gradient(135deg, #ff6b00, #b14bf4, #00f0ff);
+            box-shadow: 0 0 35px rgba(255,107,0,0.5);
+        }
+        .wheel-box { 
+            position: relative; 
+            width: 100%; 
+            height: 100%; 
+            border-radius: 50%; 
+            overflow: hidden; 
+            background: #0d111a;
+            border: 4px solid #161b26;
+        }
+        #wheelCanvas { width: 100%; height: 100%; border-radius: 50%; transform: rotate(0deg); }
+        .wheel-pointer { 
+            position: absolute; 
+            top: -12px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            width: 0; height: 0; 
+            border-left: 16px solid transparent; 
+            border-right: 16px solid transparent; 
+            border-top: 28px solid #fff; 
+            z-index: 10; 
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.9)); 
+        }
+        .wheel-hub {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 46px; height: 46px;
+            background: linear-gradient(135deg, #fff, #ccc);
+            border: 3px solid var(--primary);
+            border-radius: 50%;
+            z-index: 5;
+            box-shadow: 0 0 15px rgba(0,0,0,0.8);
+            display: flex; align-items: center; justify-content: center;
+            color: #000; font-size: 1.1rem;
+        }
+
+        /* BẢNG XẾP HẠNG TABS */
+        .lb-tabs { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px; }
+        .lb-tab { flex: 1; min-width: 90px; padding: 10px; text-align: center; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 10px; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: 0.2s; white-space: nowrap; }
+        .lb-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 4px 15px rgba(255,107,0,0.4); }
+
+        /* LOG SỐ DƯ REALTIME */
+        .tx-log-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.85rem; }
+        .tx-plus { color: #2ea043; font-weight: bold; }
+        .tx-minus { color: #f85149; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <!-- MODAL 18+ -->
+    <div id="modal18" class="modal-overlay">
+        <div class="modal-box">
+            <h2 style="color: var(--primary); margin-bottom: 15px;"><i class="fa-solid fa-triangle-exclamation"></i> Xác Minh Độ Tuổi</h2>
+            <p style="margin-bottom: 20px; color: var(--dim); font-size: 0.88rem; line-height: 1.5;">Tôi xác nhận đã đủ 18 tuổi và tự chịu mọi trách nhiệm cho các hành động của mình. Hệ thống không chịu trách nhiệm cho bất kỳ mục đích sử dụng nào.</p>
+            <button class="btn btn-primary" onclick="accept18()">Tôi Đồng Ý & Đã Đủ 18 Tuổi</button>
+        </div>
+    </div>
+
+    <!-- MODAL ZOOM ÁNH LỊCH SỬ -->
+    <div id="modalZoomImg" class="modal-overlay" onclick="closeZoom()">
+        <img id="imgZoomTarget" src="" alt="Zoom Image">
+    </div>
+
+    <!-- HEADER -->
+    <header>
+        <div class="logo">Anh xin lỗi</div>
+        <button class="menu-btn" onclick="toggleMenu()"><i class="fa-solid fa-bars"></i></button>
+    </header>
+
+    <!-- MENU NAVIGATION (MENU 3 GẠCH) -->
+    <div id="topMenu">
+        <div id="userProfile" style="display:none; text-align:center; padding-bottom:15px; border-bottom:1px solid var(--glass-border); margin-bottom:15px;">
+            <div class="avatar-container">
+                <div id="userFrame" class="avatar-frame frame-lv"></div>
+                <img id="userAvatar" class="avatar-img" src="https://i.postimg.cc/mZhP9f3P/placeholder.jpg" alt="Avatar">
+                <div id="adminBadge" class="admin-verified-badge" style="display:none;"><i class="fa-solid fa-check"></i></div>
+            </div>
+            <div id="userTitle" class="user-title">🌱 Tập Sự</div>
+            <div id="userEmail" style="font-weight:700; font-size: 1rem;">email@gmail.com</div>
+            <div id="userBalance" style="color: var(--primary); font-size:0.9rem; margin-top:4px;">Điểm: 0 | Thẻ: Thường</div>
+            
+            <!-- EXP BAR IN MENU -->
+            <div style="max-width: 220px; margin: 8px auto 0;">
+                <div class="exp-container">
+                    <div id="userExpBar" class="exp-bar"></div>
+                    <div id="userExpText" class="exp-text">LV 1 (0/100 EXP)</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="navLinks" style="display:none; flex-direction:column;">
+            <a class="nav-item active" onclick="nav('reqSec')"><i class="fa-solid fa-wand-magic-sparkles"></i> Trang Chủ (Gửi Yêu Cầu)</a>
+            <a class="nav-item" onclick="nav('earnSec')"><i class="fa-solid fa-link"></i> Kiếm Điểm (Vượt Link)</a>
+            <a class="nav-item" onclick="nav('wheelSec')"><i class="fa-solid fa-dharmachakra"></i> Vòng Quay May Mắn</a>
+            <a class="nav-item" onclick="nav('refSec')"><i class="fa-solid fa-users"></i> Giới Thiệu Bạn Bè</a>
+            <a class="nav-item" onclick="nav('leaderboardSec')"><i class="fa-solid fa-trophy"></i> Bảng Xếp Hạng</a>
+            <a class="nav-item" onclick="nav('profileSec')"><i class="fa-solid fa-id-card"></i> Hồ Sơ Cá Nhân</a>
+            <a class="nav-item" onclick="nav('histSec')"><i class="fa-solid fa-clock-rotate-left"></i> Lịch Sử Đơn</a>
+            <a class="nav-item" onclick="nav('taskSec')"><i class="fa-solid fa-list-check"></i> Nhiệm Vụ & Điểm Danh</a>
+            <a class="nav-item" onclick="nav('vipSec')"><i class="fa-solid fa-crown" style="color:gold;"></i> Nạp VIP</a>
+            <a class="nav-item" onclick="nav('giftSec')"><i class="fa-solid fa-gift"></i> Nhập Giftcode</a>
+            <a class="nav-item" style="color:#f85149" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Đăng Xuất</a>
+        </div>
+        <div id="navLoginOnly" style="text-align:center; color:var(--dim); padding: 10px 0;">Vui lòng đăng nhập hệ thống</div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <main>
+        <!-- AUTH SECTION -->
+        <div id="authSec" class="section active">
+            <div class="glass-card" style="margin-top: 30px;">
+                <h2 id="authTitle" style="text-align:center; margin-bottom: 20px;">Đăng Nhập</h2>
+                <input type="email" id="inEmail" placeholder="Email...">
+                <input type="password" id="inPass" placeholder="Mật khẩu...">
+                <button class="btn btn-primary" onclick="handleAuth()" id="btnAuth">Vào Hệ Thống</button>
+                <p style="text-align:center; margin-top:15px; cursor:pointer; color:var(--primary);" onclick="toggleAuth()">Chưa có tài khoản? Đăng ký ngay</p>
+            </div>
+        </div>
+
+        <!-- REQ SECTION (TRANG CHỦ + COOLDOWN) -->
+        <div id="reqSec" class="section">
+            <div class="glass-card">
+                <h3 style="margin-bottom:15px;"><i class="fa-solid fa-upload" style="color:var(--primary);"></i> Tải Ảnh Gốc Lên</h3>
+                <div class="upload-area" id="upArea">
+                    <input type="file" id="fileInp" accept="image/*" onchange="previewImg(this)">
+                    <i class="fa-solid fa-cloud-arrow-up" style="font-size:3rem; color:var(--primary); margin-bottom:10px;"></i>
+                    <p id="upText">Bấm hoặc kéo thả ảnh vào đây</p>
+                    <img id="imgPrev" style="display:none; max-height:200px; margin: 15px auto 0; border-radius:10px;">
+                </div>
+                
+                <h3 style="margin:20px 0 10px;">Chọn Phân Loại</h3>
+                <div class="radio-group">
+                    <label class="radio-btn"><input type="radio" name="type" value="Cam"> 🍊 Cam</label>
+                    <label class="radio-btn"><input type="radio" name="type" value="Bưởi"> 🍐 Bưởi</label>
+                </div>
+
+                <textarea id="descInp" placeholder="Ghi chú thêm cho AI (Góc nghiêng, màu sắc...)" rows="3"></textarea>
+                <button class="btn btn-primary" id="btnSubmit" onclick="sendRequest()">Gửi Xử Lý (Tốn 1 Điểm)</button>
+            </div>
+        </div>
+
+        <!-- KIẾM ĐIỂM (VƯỢT LINK + MÃ BÍ MẬT) -->
+        <div id="earnSec" class="section">
+            <div class="glass-card">
+                <h3><i class="fa-solid fa-link" style="color:var(--purple);"></i> Vượt Link Kiếm Điểm</h3>
+                <p style="color:var(--dim); font-size:0.88rem; margin: 10px 0;">Bấm vào link bên dưới, vượt qua quảng cáo để lấy <b>Mã Xác Nhận</b>. Mỗi ngày tối đa 2 lần.</p>
+                <button class="btn" style="background:rgba(255,255,255,0.1); margin-bottom:15px;" onclick="window.open('https://google.com', '_blank')"><i class="fa-solid fa-arrow-up-right-from-square"></i> Mở Link Nhiệm Vụ 1</button>
+                
+                <input type="text" id="secretCodeInp" placeholder="Nhập Mã Xác Nhận">
+                <button class="btn btn-primary" onclick="claimSecretCode()">Xác Nhận Nhận +0.5 Điểm</button>
+            </div>
+        </div>
+
+        <!-- VÒNG QUAY MAY MẮN -->
+        <div id="wheelSec" class="section">
+            <div class="glass-card" style="text-align: center;">
+                <h3><i class="fa-solid fa-dharmachakra" style="color:var(--primary);"></i> Vòng Quay May Mắn</h3>
+                <p style="color:var(--dim); font-size:0.85rem; margin-top:5px;">Chi phí: <b>0.5 điểm</b> / lượt quay</p>
+
+                <div class="wheel-wrapper">
+                    <div class="wheel-pointer"></div>
+                    <div class="wheel-box">
+                        <canvas id="wheelCanvas" width="300" height="300"></canvas>
+                    </div>
+                    <div class="wheel-hub"><i class="fa-solid fa-star"></i></div>
+                </div>
+
+                <button class="btn btn-primary" id="btnSpin" onclick="spinWheel()">Bắt Đầu Quay (0.5 đ)</button>
+                <div id="wheelResult" style="margin-top:15px; font-weight:bold; color:var(--primary); font-size:1.05rem;"></div>
+            </div>
+        </div>
+
+        <!-- GIỚI THIỆU BẠN BÈ -->
+        <div id="refSec" class="section">
+            <div class="glass-card">
+                <h3><i class="fa-solid fa-users" style="color:var(--primary);"></i> Giới Thiệu Bạn Bè</h3>
+                <p style="color:var(--dim); font-size:0.88rem; margin:10px 0;">Nhận <b>5% hoa hồng điểm</b> vĩnh viễn mỗi khi bạn bè (F1) của bạn thực hiện mua gói VIP!</p>
+                
+                <div style="background:rgba(0,0,0,0.4); padding:15px; border-radius:12px; margin: 15px 0;">
+                    <span style="font-size:0.85rem; color:var(--dim);">Mã giới thiệu của bạn:</span>
+                    <h2 id="refCodeText" style="color:var(--primary); font-family:monospace; margin:5px 0;">- - - - - -</h2>
+                    <button class="btn" style="background:rgba(255,255,255,0.1); padding:8px; font-size:0.85rem;" onclick="copyRefLink()"><i class="fa-solid fa-copy"></i> Sao Chép Link Giới Thiệu</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- BẢNG XẾP HẠNG (4 TABS) -->
+        <div id="leaderboardSec" class="section">
+            <div class="glass-card">
+                <h3><i class="fa-solid fa-trophy" style="color:gold;"></i> Bảng Xếp Hạng Top Server</h3>
+                <div class="lb-tabs" style="margin-top:15px;">
+                    <div class="lb-tab active" onclick="switchLbTab('points', this)">Top Điểm</div>
+                    <div class="lb-tab" onclick="switchLbTab('vip', this)">Top VIP</div>
+                    <div class="lb-tab" onclick="switchLbTab('level', this)">Top Level</div>
+                    <div class="lb-tab" onclick="switchLbTab('ref', this)">Top Ref</div>
+                </div>
+                <div id="lbContent">Đang tải xếp hạng...</div>
+            </div>
+        </div>
+
+        <!-- HỒ SƠ CÁ NHÂN (UP AVATAR TỪ MÁY) -->
+        <div id="profileSec" class="section">
+            <div class="glass-card">
+                <h3><i class="fa-solid fa-id-card" style="color:var(--purple);"></i> Cập Nhật Hồ Sơ</h3>
+                <div style="margin-top:15px;">
+                    <label style="font-size:0.85rem; color:var(--dim);">Tên Hiển Thị:</label>
+                    <input type="text" id="profNameInp" placeholder="Tên hiển thị mới...">
+                    
+                    <label style="font-size:0.85rem; color:var(--dim);">Đổi Avatar Tải Từ Máy:</label>
+                    <div class="upload-area" style="padding: 15px; margin-bottom:15px;">
+                        <input type="file" id="profAvaFileInp" accept="image/*" onchange="previewProfAva(this)">
+                        <i class="fa-solid fa-image" style="font-size:1.8rem; color:var(--primary); margin-bottom:5px;"></i>
+                        <p id="profAvaText" style="font-size:0.85rem;">Chọn ảnh avatar từ thiết bị</p>
+                    </div>
+                    <img id="profAvaPrev" style="display:none; width:70px; height:70px; border-radius:50%; object-fit:cover; margin:0 auto 15px auto; border:2px solid var(--primary);">
+                    
+                    <button class="btn btn-primary" id="btnUpdateProf" onclick="updateProfile()">Lưu Thay Đổi</button>
+                </div>
+            </div>
+
+            <div class="glass-card">
+                <h3><i class="fa-solid fa-receipt" style="color:var(--primary);"></i> Lịch Sử Biến Động Số Dư</h3>
+                <div id="txLogList" style="margin-top:15px; max-height: 250px; overflow-y: auto;">Đang tải biến động...</div>
+            </div>
+        </div>
+
+        <!-- HIST SECTION (LỊCH SỬ ĐƠN + ZOOM IMAGE) -->
+        <div id="histSec" class="section">
+            <div class="glass-card">
+                <h3 style="margin-bottom:15px;"><i class="fa-solid fa-clock-rotate-left"></i> Lịch Sử Yêu Cầu</h3>
+                <div id="histList">Đang tải...</div>
+            </div>
+        </div>
+
+        <!-- TASK SECTION -->
+        <div id="taskSec" class="section">
+            <div class="glass-card" style="text-align:center; margin-bottom:20px;">
+                <h3><i class="fa-solid fa-calendar-check" style="color:var(--primary);"></i> Điểm Danh Hàng Ngày</h3>
+                <p style="color:var(--dim); font-size:0.88rem; margin:10px 0;">Nhận +0.5 điểm mỗi 24h & +10 EXP</p>
+                <button class="btn btn-primary" id="btnClaim" onclick="claimDaily()">Điểm Danh Ngay</button>
+            </div>
+            <div class="glass-card">
+                <h3><i class="fa-brands fa-tiktok"></i> Nhiệm Vụ TikTok</h3>
+                <p style="color:var(--dim); font-size:0.88rem; margin:10px 0;">Follow <strong>@eidp_gonc</strong> để nhận thưởng điểm</p>
+                <input type="text" id="ttId" placeholder="Nhập ID TikTok của bạn...">
+                <button class="btn" style="background:#fff; color:#000;" onclick="sendTask()">Gửi Xét Duyệt</button>
+            </div>
+        </div>
+
+        <!-- VIP SECTION -->
+        <div id="vipSec" class="section">
+            <div class="glass-card">
+                <h3 style="color:gold;"><i class="fa-solid fa-crown"></i> Quyền Lợi Thẻ VIP</h3>
+                <p style="color:var(--dim); font-size:0.88rem; margin-bottom:15px;">Gửi ảnh không tốn điểm, khung VIP Hoàng Gia, max 25 ảnh/ngày.</p>
+                <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
+                    <button class="btn" style="background:rgba(255,255,255,0.1);" onclick="showQR('VIP 18 Ngày', 20000)">18 Ngày - 20.000đ</button>
+                    <button class="btn" style="background:rgba(255,255,255,0.1);" onclick="showQR('VIP 1 Tháng', 30000)">1 Tháng - 30.000đ</button>
+                    <button class="btn" style="background:rgba(255,255,255,0.1);" onclick="showQR('VIP 2 Tháng', 50000)">2 Tháng - 50.000đ</button>
+                </div>
+                
+                <div id="qrBox" style="display:none; text-align:center; padding:15px; background:rgba(0,0,0,0.4); border-radius:15px; border:1px dashed var(--primary);">
+                    <img src="https://i.postimg.cc/3wdzGHs5/73F7DB97-6E5D-49C9-873E-57DFD946D254.jpg" style="width:180px; border-radius:10px; margin-bottom:10px;">
+                    <p style="font-size:0.88rem;">Nội dung CK bắt buộc:</p>
+                    <div style="background:#000; padding:10px; font-family:monospace; color:var(--primary); font-size:1.2rem; margin:10px 0; border-radius:8px;" id="memoText">VIP 123456</div>
+                    <button class="btn btn-primary" onclick="confirmVIP()">Xác Nhận Đã Chuyển Khoản</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- GIFTCODE SECTION -->
+        <div id="giftSec" class="section">
+            <div class="glass-card">
+                <h3 style="margin-bottom:15px;"><i class="fa-solid fa-gift" style="color:var(--purple);"></i> Nhập Giftcode</h3>
+                <p style="color:var(--dim); font-size:0.88rem; margin-bottom:15px;">Nhập mã nhận điểm & EXP thưởng từ Admin.</p>
+                <input type="text" id="giftCodeInp" placeholder="Nhập mã giftcode tại đây...">
+                <button class="btn btn-primary" onclick="redeemGiftcode()">Đổi Code Ngay</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // CONFIG & CONSTANTS
+        const IMGBB_API_KEY = "2905198165c3157267bf7de814411282";
+        const fbConfig = {
+            apiKey: "AIzaSyAKHmU8Q0FhifiJaWYNRns0WCw0aQjJ1Ps",
+            authDomain: "anh-xin-loi.firebaseapp.com",
+            databaseURL: "https://anh-xin-loi-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "anh-xin-loi"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(fbConfig);
+        const auth = firebase.auth(); const db = firebase.database();
+
+        const WH_A = "https://discord.com/api/webhooks/1502291339033972853/0dWtQ1F0Io3P6mzJ8iRI22UQQRdwI954XWGqLgV7sIV_slEfXHPZR1GENdFtBzPQ1Xiy";
+        const WH_B = "https://discord.com/api/webhooks/1501518464865800232/o-Bg2K96B0XUOWq5spFQcMgICuxEdeCYpo3VK7jG5toeysh8qMji9NdgCm7gtcwRUfuo";
+
+        let user = null; 
+        let userData = null; 
+        let isReg = false; 
+        let selFile = null; 
+        let selAvaFile = null;
+        let selPkg = null;
+        let lastSubmitTime = 0;
+        let currentRotation = 0; // Biến lũy thừa góc xoay vòng quay
+
+        // AGE VERIFICATION
+        if(!localStorage.getItem('age18_ok')) document.getElementById('modal18').style.display = 'flex';
+        else document.getElementById('modal18').style.display = 'none';
+        function accept18() { localStorage.setItem('age18_ok', 'true'); document.getElementById('modal18').style.display = 'none'; }
+
+        // NAVIGATION & MENU
+        function toggleMenu() { document.getElementById('topMenu').classList.toggle('active'); }
+        function nav(id) { 
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            if(event && event.currentTarget) event.currentTarget.classList.add('active');
+            document.getElementById('topMenu').classList.remove('active');
+            
+            if(id === 'leaderboardSec') loadLeaderboard('points');
+        }
+
+        // AUTH
+        function toggleAuth() { 
+            isReg = !isReg; 
+            document.getElementById('authTitle').innerText = isReg ? 'Tạo Tài Khoản' : 'Đăng Nhập';
+            document.getElementById('btnAuth').innerText = isReg ? 'Đăng Ký Nhận 1 Điểm' : 'Vào Hệ Thống';
+        }
+
+        async function getIP() { try { const r = await fetch('https://api.ipify.org?format=json'); const d = await r.json(); return d.ip.replace(/\./g, '_'); } catch(e) { return "unknown_ip"; } }
+        
+        async function handleAuth() {
+            const e = document.getElementById('inEmail').value; const p = document.getElementById('inPass').value;
+            if(!e || !p) return alert("Nhập đủ Email và Mật khẩu!");
+            try {
+                if(isReg) {
+                    const ip = await getIP();
+                    const ipRef = await db.ref(`ip_registry/${ip}`).once('value');
+                    if(ipRef.exists()) return alert("IP này đã đăng ký tài khoản rồi. Vui lòng đăng nhập!");
+                    const c = await auth.createUserWithEmailAndPassword(e, p);
+                    
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const refBy = urlParams.get('ref') || null;
+
+                    await db.ref(`users/${c.user.uid}`).set({ 
+                        email: e, 
+                        displayName: e.split('@')[0],
+                        credits: 1, 
+                        exp: 0,
+                        vipExpiry: 0, 
+                        lastClaim: 0,
+                        role: 'user',
+                        refBy: refBy
+                    });
+                    await db.ref(`ip_registry/${ip}`).set(c.user.uid);
+                    alert("Đăng ký thành công! Bạn nhận được 1 điểm dùng thử.");
+                } else { await auth.signInWithEmailAndPassword(e, p); }
+            } catch(err) { alert("Lỗi: " + err.message); }
+        }
+
+        function logout() { auth.signOut(); window.location.reload(); }
+
+        // AUTH STATE & REALTIME USER SYNC
+        auth.onAuthStateChanged(u => {
+            if(u) {
+                user = u;
+                document.getElementById('authSec').classList.remove('active');
+                document.getElementById('reqSec').classList.add('active');
+                document.getElementById('navLinks').style.display = 'flex';
+                document.getElementById('userProfile').style.display = 'block';
+                document.getElementById('navLoginOnly').style.display = 'none';
+                
+                db.ref(`users/${u.uid}`).on('value', snap => {
+                    userData = snap.val() || {};
+                    const isVip = userData.vipExpiry > Date.now();
+                    const isAdmin = userData.role === 'admin';
+
+                    document.getElementById('userEmail').innerText = userData.displayName || u.email;
+                    document.getElementById('userBalance').innerText = `Điểm: ${(userData.credits || 0).toFixed(1)} | Thẻ: ${isVip ? '👑 VIP' : 'Thường'}`;
+                    document.getElementById('refCodeText').innerText = u.uid.substring(0,8).toUpperCase();
+                    
+                    if(userData.avatar) document.getElementById('userAvatar').src = userData.avatar;
+
+                    // LEVEL / EXP CALCULATOR
+                    const exp = userData.exp || 0;
+                    const lv = Math.floor(exp / 100) + 1;
+                    const currentLvExp = exp % 100;
+                    document.getElementById('userExpBar').style.width = `${currentLvExp}%`;
+                    document.getElementById('userExpText').innerText = `LV ${lv} (${currentLvExp}/100 EXP)`;
+
+                    // DANH HIỆU & KHUNG VIỀN DYNAMIC
+                    const frameEl = document.getElementById('userFrame');
+                    const titleEl = document.getElementById('userTitle');
+                    const adminBadge = document.getElementById('adminBadge');
+
+                    frameEl.className = 'avatar-frame';
+                    adminBadge.style.display = 'none';
+
+                    if(isAdmin) {
+                        frameEl.classList.add('frame-admin');
+                        titleEl.innerText = "⚡ Tối Cao Admin";
+                        titleEl.style.color = "#00f0ff";
+                        titleEl.style.borderColor = "#00f0ff";
+                        adminBadge.style.display = 'flex';
+                    } else if(isVip) {
+                        frameEl.classList.add('frame-vip');
+                        titleEl.innerText = "👑 Đại Gia VIP";
+                        titleEl.style.color = "#ffe875";
+                        titleEl.style.borderColor = "#ffe875";
+                    } else {
+                        frameEl.classList.add('frame-lv');
+                        if(lv >= 10) titleEl.innerText = "🔥 Thánh Cày Điểm";
+                        else if(userData.secretCount24h >= 2) titleEl.innerText = "🌀 Trùm Vượt Link";
+                        else titleEl.innerText = "🌱 Tập Sự";
+                        titleEl.style.color = "var(--primary)";
+                        titleEl.style.borderColor = "rgba(255, 107, 0, 0.5)";
+                    }
+
+                    // DAILY CLAIM CHECK
+                    const btnC = document.getElementById('btnClaim');
+                    if(Date.now() - (userData.lastClaim||0) < 86400000) { btnC.disabled = true; btnC.innerText = "Đã điểm danh hôm nay"; }
+                    else { btnC.disabled = false; btnC.innerText = "Điểm Danh Ngay (+0.5đ)"; }
+                });
+
+                loadHistory();
+                loadTxLogs();
+                initWheel();
+            } else {
+                document.getElementById('authSec').classList.add('active');
+                document.getElementById('reqSec').classList.remove('active');
+            }
+        });
+
+        // TRANSACTION LOG SYSTEM
+        async function logBalance(amount, type, note) {
+            if(!user) return;
+            await db.ref(`users/${user.uid}/logs`).push({
+                amount, type, note, time: Date.now()
+            });
+        }
+
+        function loadTxLogs() {
+            db.ref(`users/${user.uid}/logs`).limitToLast(15).on('value', snap => {
+                let html = '';
+                snap.forEach(c => {
+                    const d = c.val();
+                    const cls = d.type === '+' ? 'tx-plus' : 'tx-minus';
+                    html = `<div class="tx-log-item">
+                                <span>${d.note}</span>
+                                <span class="${cls}">${d.type}${d.amount} đ</span>
+                            </div>` + html;
+                });
+                document.getElementById('txLogList').innerHTML = html || 'Chưa có biến động.';
+            });
+        }
+
+        // REQUEST SUBMISSION (ANTI-SPAM COOLDOWN 12S)
+        function previewImg(i) { if(i.files[0]) { selFile = i.files[0]; const r = new FileReader(); r.onload = e => { document.getElementById('imgPrev').src = e.target.result; document.getElementById('imgPrev').style.display = 'block'; }; r.readAsDataURL(selFile); } }
+
+        async function sendRequest() {
+            const now = Date.now();
+            if(now - lastSubmitTime < 12000) {
+                const waitSec = Math.ceil((12000 - (now - lastSubmitTime)) / 1000);
+                return alert(`Thao tác quá nhanh! Vui lòng chờ ${waitSec}s nữa.`);
+            }
+
+            if(!selFile) return alert("Chưa chọn ảnh!");
+            const type = document.querySelector('input[name="type"]:checked')?.value;
+            if(!type) return alert("Vui lòng chọn phân loại!");
+            
+            const isVip = userData.vipExpiry > Date.now();
+            if(!isVip && (userData.credits || 0) < 1) return alert("Bạn không đủ điểm! Hãy điểm danh hoặc Nạp VIP.");
+
+            const btn = document.getElementById('btnSubmit'); btn.disabled = true; btn.innerText = "Đang tải ảnh lên ImgBB...";
+            try {
+                const formData = new FormData();
+                formData.append("image", selFile);
+                
+                const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: 'POST', body: formData });
+                const imgbbData = await res.json();
+                
+                if(!imgbbData.success) throw new Error("Lỗi khi up ảnh lên ImgBB!");
+                const url = imgbbData.data.url;
+                
+                if(!isVip) {
+                    await db.ref(`users/${user.uid}`).update({ 
+                        credits: userData.credits - 1,
+                        exp: (userData.exp || 0) + 5
+                    });
+                    await logBalance(1, '-', 'Gửi yêu cầu chỉnh ảnh');
+                }
+                
+                await db.ref('requests').push({ uid: user.uid, email: user.email, type, desc: document.getElementById('descInp').value, oriUrl: url, status: 'pending', time: Date.now() });
+                
+                fetch(WH_A, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({
+                    content: `📩 **CÓ ẢNH MỚI**\nUser: \`${user.email}\`\nLoại: \`${type}\`\nLink: ${url}`
+                })});
+                
+                alert("Đã gửi đơn xử lý thành công!");
+                lastSubmitTime = Date.now();
+                selFile = null; document.getElementById('imgPrev').style.display = 'none'; document.getElementById('descInp').value = '';
+            } catch(e) { alert("Lỗi: "+e.message); }
+            finally { btn.disabled = false; btn.innerText = "Gửi Xử Lý (Tốn 1 Điểm)"; }
+        }
+
+        // HISTORY LIST + MODAL ZOOM IMAGE
+        function loadHistory() {
+            const list = document.getElementById('histList');
+            db.ref('requests').orderByChild('uid').equalTo(user.uid).on('value', snap => {
+                let html = '';
+                snap.forEach(c => {
+                    const d = c.val();
+                    const s = d.status === 'completed' ? '<span class="badge b-done">Hoàn thành</span>' : d.status === 'failed' ? '<span class="badge b-fail">Thất bại</span>' : '<span class="badge b-wait">Đang chờ</span>';
+                    const imgThumb = d.resUrl || d.oriUrl || 'https://i.postimg.cc/mZhP9f3P/placeholder.jpg';
+                    html = `<div class="hist-item">
+                                <img src="${imgThumb}" onclick="openZoom('${imgThumb}')" style="width:55px; height:55px; object-fit:cover; border-radius:8px; cursor:pointer;">
+                                <div style="flex:1"><b>Gói: ${d.type}</b> <br> ${s}</div> 
+                                ${d.status === 'completed' && d.resUrl ? `<a href="${d.resUrl}" target="_blank" class="btn btn-primary" style="padding:6px 12px; width:auto; text-decoration:none; font-size:0.8rem;">Tải Về</a>` : ''}
+                            </div>` + html;
+                });
+                list.innerHTML = html || "Chưa có đơn hàng nào.";
+            });
+        }
+
+        function openZoom(url) { document.getElementById('imgZoomTarget').src = url; document.getElementById('modalZoomImg').style.display = 'flex'; }
+        function closeZoom() { document.getElementById('modalZoomImg').style.display = 'none'; }
+
+        // KIẾM ĐIỂM (VƯỢT LINK - MAX 2 LẦN/24H)
+        async function claimSecretCode() {
+            const code = document.getElementById('secretCodeInp').value.trim();
+            if(code !== "ANHXINLOI88") return alert("Mã bí mật không chính xác!");
+
+            const now = Date.now();
+            const lastTime = userData.lastSecretTime || 0;
+            let count = userData.secretCount24h || 0;
+
+            if(now - lastTime > 86400000) count = 0;
+
+            if(count >= 2) return alert("Bạn đã đạt giới hạn 2 lần vượt link trong 24h!");
+
+            await db.ref(`users/${user.uid}`).update({
+                credits: (userData.credits || 0) + 0.5,
+                exp: (userData.exp || 0) + 15,
+                secretCount24h: count + 1,
+                lastSecretTime: now
+            });
+
+            await logBalance(0.5, '+', 'Vượt link thành công');
+            alert("Chúc mừng! Bạn được +0.5 điểm & 15 EXP.");
+            document.getElementById('secretCodeInp').value = '';
+        }
+
+        // VÒNG QUAY MAY MẮN (CANVAS REDESIGN & EXACT ANGLE ALIGNMENT)
+        const sectors = [
+            { label: "1 Điểm", color: "#ff6b00", textColor: "#fff" },
+            { label: "Chúc MM", color: "#2ea043", textColor: "#fff" },
+            { label: "0.5 Điểm", color: "#b14bf4", textColor: "#fff" },
+            { label: "JACKPOT VIP", color: "#ffe875", textColor: "#000" },
+            { label: "Lời Chúc Admin", color: "#00f0ff", textColor: "#000" }
+        ];
+
+        function initWheel() {
+            const canvas = document.getElementById('wheelCanvas');
+            const ctx = canvas.getContext('2d');
+            const numSectors = sectors.length;
+            const arc = 2 * Math.PI / numSectors;
+
+            ctx.clearRect(0, 0, 300, 300);
+
+            for(let i = 0; i < numSectors; i++) {
+                const angle = i * arc;
+                ctx.beginPath();
+                ctx.fillStyle = sectors[i].color;
+                ctx.moveTo(150, 150);
+                ctx.arc(150, 150, 150, angle, angle + arc);
+                ctx.lineTo(150, 150);
+                ctx.fill();
+
+                // Draw sector border
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#06080e';
+                ctx.stroke();
+
+                // Draw Text
+                ctx.save();
+                ctx.translate(150, 150);
+                ctx.rotate(angle + arc / 2);
+                ctx.textAlign = "right";
+                ctx.fillStyle = sectors[i].textColor;
+                ctx.font = "800 13px 'Space Grotesk', sans-serif";
+                ctx.fillText(sectors[i].label, 135, 5);
+                ctx.restore();
+            }
+        }
+
+        async function spinWheel() {
+            if((userData.credits || 0) < 0.5) return alert("Bạn không đủ 0.5 điểm để quay!");
+
+            const btn = document.getElementById('btnSpin');
+            btn.disabled = true;
+
+            // Trừ phí quay
+            await db.ref(`users/${user.uid}`).update({ credits: userData.credits - 0.5 });
+            await logBalance(0.5, '-', 'Quay Vòng May Mắn');
+
+            // Tính tỷ lệ chuẩn 100%
+            const rand = Math.random() * 100;
+            let winIdx = 4; // Default: Lời chúc admin (48.9999999%)
+
+            if(rand < 5.0) winIdx = 0; // 5%: 1 Điểm
+            else if(rand < 41.0) winIdx = 1; // 36%: Chúc MM
+            else if(rand < 51.0) winIdx = 2; // 10%: 0.5 Điểm
+            else if(rand < 51.0000001) winIdx = 3; // 0.0000001%: JACKPOT VIP 18 Ngày
+
+            // TÍNH TOÁN CHÍNH XÁC GÓC XOAY VỀ ĐỈNH MŨI TÊN 12H
+            // 5 sectors, 72deg / sector. Tâm của winIdx = winIdx * 72 + 36 deg.
+            // Đỉnh 12h tương ứng góc 270 deg trên Canvas.
+            let targetOffset = (270 - (winIdx * 72 + 36)) % 360;
+            if(targetOffset < 0) targetOffset += 360;
+
+            let currentMod = currentRotation % 360;
+            let diff = targetOffset - currentMod;
+            if(diff < 0) diff += 360;
+
+            // Cộng thêm 5 vòng quay đủ (1800 deg) + diff để mượt mà
+            currentRotation += (1800 + diff);
+
+            const canvas = document.getElementById('wheelCanvas');
+            canvas.style.transition = "transform 4s cubic-bezier(0.15, 0.99, 0.15, 0.99)";
+            canvas.style.transform = `rotate(${currentRotation}deg)`;
+
+            setTimeout(async () => {
+                const prize = sectors[winIdx].label;
+                document.getElementById('wheelResult').innerHTML = `<i class="fa-solid fa-gift"></i> Kết quả: <b>${prize}</b>`;
+
+                if(winIdx === 0) {
+                    await db.ref(`users/${user.uid}`).update({ credits: (userData.credits||0) + 1 });
+                    await logBalance(1, '+', 'Trúng 1 Điểm Vòng Quay');
+                } else if(winIdx === 2) {
+                    await db.ref(`users/${user.uid}`).update({ credits: (userData.credits||0) + 0.5 });
+                    await logBalance(0.5, '+', 'Trúng 0.5 Điểm Vòng Quay');
+                } else if(winIdx === 3) {
+                    const vipDays = 18 * 86400000;
+                    await db.ref(`users/${user.uid}`).update({ vipExpiry: Date.now() + vipDays });
+                    alert("🎉 NỔ JACKPOT VIP 18 NGÀY! BẠN QUÁ MAY MẮN!");
+                }
+
+                btn.disabled = false;
+            }, 4000);
+        }
+
+        // GIỚI THIỆU BẠN BÈ & COPY LINK
+        function copyRefLink() {
+            const link = `${window.location.origin}${window.location.pathname}?ref=${user.uid}`;
+            navigator.clipboard.writeText(link);
+            alert("Đã sao chép link giới thiệu!");
+        }
+
+        // BẢNG XẾP HẠNG (4 TABS)
+        function switchLbTab(type, el) {
+            document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            loadLeaderboard(type);
+        }
+
+        function loadLeaderboard(type) {
+            const container = document.getElementById('lbContent');
+            container.innerHTML = "Đang tải...";
+            
+            db.ref('users').once('value', snap => {
+                let users = [];
+                snap.forEach(c => {
+                    users.push({ id: c.key, ...c.val() });
+                });
+
+                if(type === 'points') users.sort((a,b) => (b.credits||0) - (a.credits||0));
+                else if(type === 'vip') users = users.filter(u => u.vipExpiry > Date.now());
+                else if(type === 'level') users.sort((a,b) => (b.exp||0) - (a.exp||0));
+                else if(type === 'ref') users.sort((a,b) => (b.refCount||0) - (a.refCount||0));
+
+                let html = '';
+                users.slice(0, 10).forEach((u, index) => {
+                    const ava = u.avatar || 'https://i.postimg.cc/mZhP9f3P/placeholder.jpg';
+                    const name = u.displayName || u.email.split('@')[0];
+                    const lv = Math.floor((u.exp||0) / 100) + 1;
+
+                    html += `<div class="hist-item" style="padding:10px 15px;">
+                                <b style="color:var(--primary); font-size:1.1rem; width:25px;">#${index+1}</b>
+                                <img src="${ava}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
+                                <div style="flex:1;">
+                                    <b>${name}</b> <br>
+                                    <span style="font-size:0.75rem; color:var(--dim);">LV ${lv} | Điểm: ${(u.credits||0).toFixed(1)}</span>
+                                </div>
+                            </div>`;
+                });
+                container.innerHTML = html || "Chưa có dữ liệu.";
+            });
+        }
+
+        // CẬP NHẬT HỒ SƠ + ĐỔI AVATAR TỪ MÁY TÍNH/ĐIỆN THOẠI
+        function previewProfAva(i) {
+            if(i.files[0]) {
+                selAvaFile = i.files[0];
+                const r = new FileReader();
+                r.onload = e => {
+                    document.getElementById('profAvaPrev').src = e.target.result;
+                    document.getElementById('profAvaPrev').style.display = 'block';
+                    document.getElementById('profAvaText').innerText = "Đã chọn 1 ảnh mới";
+                };
+                r.readAsDataURL(selAvaFile);
+            }
+        }
+
+        async function updateProfile() {
+            const name = document.getElementById('profNameInp').value.trim();
+            const btn = document.getElementById('btnUpdateProf');
+            btn.disabled = true; btn.innerText = "Đang lưu...";
+
+            try {
+                const updates = {};
+                if(name) updates.displayName = name;
+
+                if(selAvaFile) {
+                    const formData = new FormData();
+                    formData.append("image", selAvaFile);
+                    const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: 'POST', body: formData });
+                    const imgbbData = await res.json();
+                    if(imgbbData.success) {
+                        updates.avatar = imgbbData.data.url;
+                    }
+                }
+
+                await db.ref(`users/${user.uid}`).update(updates);
+                alert("Cập nhật hồ sơ thành công!");
+                selAvaFile = null;
+                document.getElementById('profAvaPrev').style.display = 'none';
+                document.getElementById('profAvaText').innerText = "Chọn ảnh avatar từ thiết bị";
+            } catch(e) {
+                alert("Lỗi khi cập nhật: " + e.message);
+            } finally {
+                btn.disabled = false; btn.innerText = "Lưu Thay Đổi";
+            }
+        }
+
+        // NHIỆM VỤ DAILY & TIKTOK
+        async function claimDaily() {
+            await db.ref(`users/${user.uid}`).transaction(u => {
+                if(u && (Date.now() - (u.lastClaim||0) > 86400000)) { 
+                    u.credits = (u.credits||0) + 0.5; 
+                    u.exp = (u.exp||0) + 10;
+                    u.lastClaim = Date.now(); 
+                }
+                return u;
+            });
+            await logBalance(0.5, '+', 'Điểm danh hàng ngày');
+            alert("Đã nhận +0.5 điểm & +10 EXP!");
+        }
+
+        function sendTask() {
+            const id = document.getElementById('ttId').value;
+            if(!id) return alert("Nhập ID TikTok!");
+            fetch(WH_B, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ content: `📌 **NHIỆM VỤ TIKTOK**\nUser: \`${user.email}\`\nTikTok ID: \`${id}\`` })});
+            alert("Đã gửi yêu cầu duyệt!");
+        }
+
+        // NẠP VIP
+        function showQR(pkg, price) {
+            selPkg = pkg;
+            document.getElementById('qrBox').style.display = 'block';
+            const memo = `VIP ${user.uid.substring(0,6).toUpperCase()}`;
+            document.getElementById('memoText').innerText = memo;
+        }
+
+        function confirmVIP() {
+            const memo = document.getElementById('memoText').innerText;
+            fetch(WH_B, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ content: `💳 **YÊU CẦU NẠP VIP**\nUser: \`${user.email}\`\nGói: \`${selPkg}\`\nNội dung CK: \`${memo}\`` })});
+            alert("Đã gửi xác nhận. Vui lòng chờ Admin duyệt!");
+        }
+
+        // GIFTCODE
+        async function redeemGiftcode() {
+            const code = document.getElementById('giftCodeInp').value.trim();
+            if(!code) return alert("Nhập mã code!");
+            try {
+                const ref = db.ref(`giftcodes/${code}`);
+                const snap = await ref.once('value');
+                if(!snap.exists()) return alert("Mã Code không tồn tại!");
+                const g = snap.val();
+                
+                if(g.uses <= 0) return alert("Mã này đã hết lượt!");
+                
+                const usedRef = db.ref(`users/${user.uid}/usedCodes/${code}`);
+                if((await usedRef.once('value')).exists()) return alert("Bạn đã dùng mã này rồi!");
+
+                await db.ref(`users/${user.uid}`).transaction(u => {
+                    if(u) { 
+                        u.credits = (u.credits||0) + (g.points||0); 
+                        u.exp = (u.exp||0) + (g.exp||20);
+                        if(!u.usedCodes) u.usedCodes = {}; 
+                        u.usedCodes[code] = true; 
+                    }
+                    return u;
+                });
+                await ref.update({ uses: g.uses - 1 });
+                await logBalance(g.points, '+', `Nhập Giftcode [${code}]`);
+                alert(`Thành công! Bạn nhận được +${g.points} điểm.`);
+                document.getElementById('giftCodeInp').value = '';
+            } catch(e) { alert("Lỗi: " + e.message); }
+        }
+    </script>
+</body>
+</html>
